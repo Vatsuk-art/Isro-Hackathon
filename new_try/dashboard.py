@@ -44,6 +44,11 @@ def get_nearest_location(lat, lon):
 
     temp = weather.copy()
 
+    # keep only latest date (IMPORTANT FIX)
+    latest_date = temp["Date"].max()
+    temp = temp[temp["Date"] == latest_date]
+
+    # compute distance
     temp["distance"] = (
         (temp["Latitude"] - lat) ** 2 +
         (temp["Longitude"] - lon) ** 2

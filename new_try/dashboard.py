@@ -1,77 +1,72 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 
-# 1. Dashboard Layout Setups
-st.set_page_config(page_title="5-Year IMD Climate Dashboard", layout="wide")
-st.title("📈 5-Year IMD Temperature Analytics & ML Workspace")
-st.markdown("This dashboard reads the multi-year consolidated Parquet database to present continuous timelines per state.")
+st.set_page_config(page_title="IMD Combined Climate Console", layout="wide")
+st.title("📈 5-Year Dual-Parameter Climate Analysis & ML Dataset Workspace")
 
-# 2. Optimized Caching Loader
 @st.cache_data
-def load_five_year_db():
-    # Automatically reads the nested Year and State sub-folders as a single table
-    df_master = pd.read_parquet("imd_temperature_database")
+def load_combined_database():
+    df_master = pd.read_parquet("imd_combined_database")
     df_master["Date"] = pd.to_datetime(df_master["Date"])
     return df_master
 
 try:
-    df = load_five_year_db()
+    df = load_combined_database()
 except Exception as e:
-    st.error("Could not read 'imd_temperature_database'. Ensure you ran 'process_5_years.py' first.")
+    st.error("Could not find combined database. Run 'process_combined_5_years.py' successfully first!")
     st.stop()
 
-# 3. Sidebar UI controls
-st.sidebar.header("🕹️ Controls")
+# Sidebar selections
+st.sidebar.header("🕹️ Parameters")
 available_states = sorted(df["State"].unique())
-selected_state = st.sidebar.selectbox("Choose State to Display:", available_states)
+selected_state = st.sidebar.selectbox("Choose State to Target:", available_states)
 
-# Filter down to the full 5-year sequence of your selected state
-state_5yr_df = df[df["State"] == selected_state].sort_values("Date")
+# Extract full 5-year data timeline slice for the selected region
+state_df = df[df["State"] == selected_state].sort_values("Date")
 
-# 4. KPI Summary Cards
-st.subheader(f"⚡ Quick Statistics for {selected_state} (5-Year Historical Metrics)")
+# UI Visual Metrics Cards
+st.subheader(f"⚡ 5-Year Integrated Analytics Summary: {selected_state}")
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Total Data Points", f"{len(state_5yr_df):,}")
-m2.metric("Record Max Temperature", f"{state_5yr_df['Temperature'].max():.2f} °C")
-m3.metric("Record Min Temperature", f"{state_5yr_df['Temperature'].min():.2f} °C")
-m4.metric("5-Year Average Temperature", f"{state_5yr_df['Temperature'].mean():.2f} °C")
+m1.metric("Total Rows Extracted", f"{len(state_df):,}")
+m2.metric("Absolute Max Temperature", f"{state_df['Max_Temp'].max():.2f} °C")
+m3.metric("Absolute Min Temperature", f"{state_df['Min_Temp'].min():.2f} °C")
+m4.metric("Avg Diurnal Range", f"{(state_df['Max_Temp'] - state_df['Min_Temp']).mean():.2f} °C")
 
-# 5. Data Viewers
 st.markdown("---")
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns([4, 3])
 
 with col1:
-    st.subheader(f"📋 Continuous Timeline Records: {selected_state}")
-    st.dataframe(state_5yr_df[["Date", "Latitude", "Longitude", "Temperature"]], use_container_width=True, height=400)
+    st.subheader("📋 Machine Learning Feature Matrix")
+    # Display the multi-variable data layout
+    st.dataframe(state_df[["Date", "Latitude", "Longitude", "Max_Temp", "Min_Temp"]], use_container_width=True, height=350)
 
 with col2:
-    st.subheader("💡 Ready for Time-Series Analysis")
-    st.info(
-        "The timeline table on the left presents data chronologically. "
-        "You can feed this sequential structure directly into forecasting models "
-        "(like ARIMA, Prophet, or LSTM) to predict future temperature spikes!"
+    st.subheader("💡 Model Training Suitability Status")
+    st.success(
+        "Excellent! Your matrix is fully formatted for multi-variable forecasting models. "
+        "You can now feed both Max_Temp and Min_Temp as features into an LSTM neural network "
+        "or an Extreme Gradient Boosting (XGBoost) model to discover complex meteorological trends."
     )
-    
-    # Simple station count visualizer to track stability of coordinates
-    station_counts = state_5yr_df.groupby(["Latitude", "Longitude"]).size().reset_index(name="Days Tracked")
-    st.write("Active Grid Tracking Points inside this State:")
-    st.dataframe(station_counts, use_container_width=True, height=250)
 
-# 6. Continuous 5-Year Time Series Plotting (Crucial for Forecasting Visibility)
+# 5-Year Combined Time-Series Plotting
 st.markdown("---")
-st.subheader(f"📉 5-Year Daily Average Temperature Fluctuations for {selected_state}")
+st.subheader(f"📉 5-Year Chronological Max vs Min Temperature Fluctuations for {selected_state}")
 
-# Group coordinates together to generate a clean, single regional average baseline sequence
-daily_macro_timeline = state_5yr_df.groupby("Date")["Temperature"].mean().reset_index()
+# Compute daily macro-state averages for clean visualization lines
+macro_timeline = state_df.groupby("Date")[["Max_Temp", "Min_Temp"]].mean().reset_index()
 
-fig_line = px.line(
-    daily_macro_timeline, 
+# Melt the dataframe format so Plotly can display two lines automatically
+melted_timeline = pd.melt(macro_timeline, id_vars=["Date"], value_vars=["Max_Temp", "Min_Temp"], 
+                          var_name="Parameter", value_name="Temperature")
+
+fig_lines = px.line(
+    melted_timeline, 
     x="Date", 
     y="Temperature", 
-    title="Continuous Daily Microclimate Sequence (2021 - 2025)",
-    labels={"Temperature": "Mean State Temp (°C)"}
+    color="Parameter",
+    color_discrete_map={"Max_Temp": "#ef4444", "Min_Temp": "#3b82f6"}, # Red line for Max, blue line for Min
+    title="Synchronous Daily Max & Min Microclimate Sequence (2021 - 2026)"
 )
-fig_line.update_traces(line=dict(color='#dc2626', width=1))
-st.plotly_chart(fig_line, use_container_width=True)
+fig_lines.update_traces(line=dict(width=1))
+st.plotly_chart(fig_lines, use_container_width=True)

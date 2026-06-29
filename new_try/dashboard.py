@@ -1,72 +1,160 @@
 import streamlit as st
+import folium
+from streamlit_folium import st_folium
 import pandas as pd
-import plotly.express as px
+import joblib
 
-st.set_page_config(page_title="IMD Combined Climate Console", layout="wide")
-st.title("📈 5-Year Dual-Parameter Climate Analysis & ML Dataset Workspace")
+# ==========================================================
+# PAGE CONFIG
+# ==========================================================
 
-@st.cache_data
-def load_combined_database():
-    df_master = pd.read_parquet("imd_combined_database")
-    df_master["Date"] = pd.to_datetime(df_master["Date"])
-    return df_master
+st.set_page_config(
+    page_title="ISRO Rainfall Prediction",
+    layout="wide"
+)
 
-try:
-    df = load_combined_database()
-except Exception as e:
-    st.error("Could not find combined database. Run 'process_combined_5_years.py' successfully first!")
-    st.stop()
+st.title("🌧️ ISRO Rainfall Prediction Dashboard")
 
-# Sidebar selections
-st.sidebar.header("🕹️ Parameters")
-available_states = sorted(df["State"].unique())
-selected_state = st.sidebar.selectbox("Choose State to Target:", available_states)
+st.write("Click anywhere on the map to predict tomorrow's rainfall.")
 
-# Extract full 5-year data timeline slice for the selected region
-state_df = df[df["State"] == selected_state].sort_values("Date")
+# ==========================================================
+# LOAD MODEL
+# ==========================================================
 
-# UI Visual Metrics Cards
-st.subheader(f"⚡ 5-Year Integrated Analytics Summary: {selected_state}")
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("Total Rows Extracted", f"{len(state_df):,}")
-m2.metric("Absolute Max Temperature", f"{state_df['Max_Temp'].max():.2f} °C")
-m3.metric("Absolute Min Temperature", f"{state_df['Min_Temp'].min():.2f} °C")
-m4.metric("Avg Diurnal Range", f"{(state_df['Max_Temp'] - state_df['Min_Temp']).mean():.2f} °C")
+model = joblib.load(
+    r"C:\Users\schou\OneDrive\Documents\Isro-Hackathon\rainfall_model.pkl"
+)
 
-st.markdown("---")
-col1, col2 = st.columns([4, 3])
+# ==========================================================
+# LOAD DATASET
+# ==========================================================
 
-with col1:
-    st.subheader("📋 Machine Learning Feature Matrix")
-    # Display the multi-variable data layout
-    st.dataframe(state_df[["Date", "Latitude", "Longitude", "Max_Temp", "Min_Temp"]], use_container_width=True, height=350)
+weather = pd.read_parquet(
+    r"C:\Users\schou\OneDrive\Documents\Isro-Hackathon\final_dataset.parquet"
+)
 
-with col2:
-    st.subheader("💡 Model Training Suitability Status")
-    st.success(
-        "Excellent! Your matrix is fully formatted for multi-variable forecasting models. "
-        "You can now feed both Max_Temp and Min_Temp as features into an LSTM neural network "
-        "or an Extreme Gradient Boosting (XGBoost) model to discover complex meteorological trends."
+# ==========================================================
+# FIND NEAREST GRID
+# ==========================================================
+
+def get_nearest_location(lat, lon):
+
+    temp = weather.copy()
+
+    temp["distance"] = (
+        (temp["Latitude"] - lat) ** 2 +
+        (temp["Longitude"] - lon) ** 2
     )
 
-# 5-Year Combined Time-Series Plotting
-st.markdown("---")
-st.subheader(f"📉 5-Year Chronological Max vs Min Temperature Fluctuations for {selected_state}")
+    nearest = temp.loc[temp["distance"].idxmin()]
 
-# Compute daily macro-state averages for clean visualization lines
-macro_timeline = state_df.groupby("Date")[["Max_Temp", "Min_Temp"]].mean().reset_index()
+    return nearest
 
-# Melt the dataframe format so Plotly can display two lines automatically
-melted_timeline = pd.melt(macro_timeline, id_vars=["Date"], value_vars=["Max_Temp", "Min_Temp"], 
-                          var_name="Parameter", value_name="Temperature")
+# ==========================================================
+# CREATE MAP
+# ==========================================================
 
-fig_lines = px.line(
-    melted_timeline, 
-    x="Date", 
-    y="Temperature", 
-    color="Parameter",
-    color_discrete_map={"Max_Temp": "#ef4444", "Min_Temp": "#3b82f6"}, # Red line for Max, blue line for Min
-    title="Synchronous Daily Max & Min Microclimate Sequence (2021 - 2026)"
+india_map = folium.Map(
+    location=[22.5, 78.9],
+    zoom_start=5
 )
-fig_lines.update_traces(line=dict(width=1))
-st.plotly_chart(fig_lines, use_container_width=True)
+
+map_data = st_folium(
+    india_map,
+    width=900,
+    height=500
+)
+
+# ==========================================================
+# WHEN USER CLICKS
+# ==========================================================
+
+if map_data["last_clicked"] is not None:
+
+    lat = map_data["last_clicked"]["lat"]
+    lon = map_data["last_clicked"]["lng"]
+
+    st.success("📍 Location Selected")
+
+    st.write(f"Latitude : {lat:.4f}")
+    st.write(f"Longitude : {lon:.4f}")
+
+    nearest = get_nearest_location(lat, lon)
+
+    st.divider()
+
+    st.subheader("Nearest Historical Weather Data")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.write("**State**")
+        st.write(nearest["State"])
+
+        st.write("**Date**")
+        st.write(nearest["Date"])
+
+        st.write("**Maximum Temperature**")
+        st.write(f"{nearest['Max_Temp']:.2f} °C")
+
+        st.write("**Minimum Temperature**")
+        st.write(f"{nearest['Min_Temp']:.2f} °C")
+
+    with col2:
+
+        st.write("**Rainfall Yesterday**")
+        st.write(f"{nearest['Rainfall_Yesterday']:.2f} mm")
+
+        st.write("**3 Day Average Rainfall**")
+        st.write(f"{nearest['Rainfall_3Day_Avg']:.2f} mm")
+
+        st.write("**7 Day Average Rainfall**")
+        st.write(f"{nearest['Rainfall_7Day_Avg']:.2f} mm")
+
+    if st.button("🌧 Predict Tomorrow's Rainfall"):
+
+        sample = pd.DataFrame({
+
+            "Latitude": [nearest["Latitude"]],
+            "Longitude": [nearest["Longitude"]],
+
+            "Max_Temp": [nearest["Max_Temp"]],
+            "Min_Temp": [nearest["Min_Temp"]],
+
+            "Avg_Temp": [nearest["Avg_Temp"]],
+            "Temp_Range": [nearest["Temp_Range"]],
+
+            "Month": [nearest["Month"]],
+            "Day": [nearest["Day"]],
+            "DayOfYear": [nearest["DayOfYear"]],
+
+            "Season": [nearest["Season"]],
+
+            "Rainfall_Yesterday": [nearest["Rainfall_Yesterday"]],
+            "Rainfall_3Day_Avg": [nearest["Rainfall_3Day_Avg"]],
+            "Rainfall_7Day_Avg": [nearest["Rainfall_7Day_Avg"]]
+
+        })
+
+        prediction = model.predict(sample)[0]
+
+        st.divider()
+
+        st.metric(
+            label="🌧 Predicted Rainfall Tomorrow",
+            value=f"{prediction:.2f} mm"
+        )
+
+        if prediction < 10:
+            st.success("🟢 Low Rainfall Expected")
+
+        elif prediction < 30:
+            st.warning("🟡 Moderate Rainfall Expected")
+
+        else:
+            st.error("🔴 Heavy Rainfall Expected")
+
+else:
+
+    st.info("👆 Click on the map to begin.")

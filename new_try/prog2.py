@@ -51,30 +51,41 @@ def get_state_from_coords(lat, lon):
     return "Other / Border Grid"
 
 
-def append_year_to_db(file_path, year, output_dir="imd_temperature_database"):
-    """Reads a full year GRD file, flattens, structures it, and saves it into the
+def merge_yearly_data_to_db(
+    max_file, min_file, year, output_dir="imd_combined_database"
+):
+    """Processes both Max and Min binary GRD files in tandem for a single year
 
-    master partitioned folder.
+    and generates a combined hybrid schema.
     """
     is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
     total_days = 366 if is_leap else 365
 
-    # Load whole year into a 3D block
-    all_year_data = np.fromfile(file_path, dtype=np.float32).reshape(
+    # 1. Read both binary files completely into memory as 3D numpy blocks
+    max_year_data = np.fromfile(max_file, dtype=np.float32).reshape(
+        total_days, ROWS, COLS
+    )
+    min_year_data = np.fromfile(min_file, dtype=np.float32).reshape(
         total_days, ROWS, COLS
     )
 
     start_date = datetime(year, 1, 1)
     records = []
 
+    # 2. Synchronous dual tracking loops
     for day_idx in range(total_days):
         current_date = start_date + timedelta(days=day_idx)
-        grid = all_year_data[day_idx, :, :]
+
+        max_grid = max_year_data[day_idx, :, :]
+        min_grid = min_year_data[day_idx, :, :]
 
         for i in range(ROWS):
             for j in range(COLS):
-                temp_val = grid[i, j]
-                if temp_val == 99.90:
+                v_max = max_grid[i, j]
+                v_min = min_grid[i, j]
+
+                # If either contains a boundary mask value, drop it entirely
+                if v_max == 99.90 or v_min == 99.90:
                     continue
 
                 lat = START_LAT - (i * GRID_STEP)
@@ -86,37 +97,49 @@ def append_year_to_db(file_path, year, output_dir="imd_temperature_database"):
                         "Date": current_date,
                         "Latitude": lat,
                         "Longitude": lon,
-                        "Temperature": temp_val,
-                        "Year": year,  # Column used for folder structure partitioning
-                        "State": state_name,  # Column used for folder structure partitioning
+                        "Max_Temp": v_max,
+                        "Min_Temp": v_min,
+                        "Year": year,  # Partition folder level 1
+                        "State": state_name,  # Partition folder level 2
                     }
                 )
 
+    # 3. Save as a consolidated Parquet package
     df = pd.DataFrame(records)
-    # Save directly to the master directory (pandas handles adding new subfolders cleanly)
     df.to_parquet(
         output_dir, partition_cols=["Year", "State"], index=False, engine="pyarrow"
     )
-    print(f"✅ Successfully processed and stored Year: {year}")
+    print(f"🔥 Scale Check complete for Year {year}! Appended Max & Min fields.")
 
 
-# --- MASTER BATCH CONFIGURATION ---
-# Replace the file names below with the exact names of your 5 GRD files
-dataset_files = {
+# --- BATCH FILE SYSTEM PAIRINGS ---
+# Update paths if your files are located in specific alternate subdirectories
+max_temp_files = {
     2021: "Maxtemp_MaxT_2021.GRD",
     2022: "Maxtemp_MaxT_2022.GRD",
     2023: "Maxtemp_MaxT_2023.GRD",
     2024: "Maxtemp_MaxT_2024.GRD",
-    2025: "Maxtemp_MaxT_2025.GRD",  # Your current file
+    2025: "Maxtemp_MaxT_2025.GRD",
 }
 
-print("🚀 Launching 5-Year Data Engineering Pipeline...")
-for year, filename in dataset_files.items():
-    if os.path.exists(filename):
-        append_year_to_db(filename, year)
+min_temp_files = {
+    2021: "Mintemp_MinT_2021.GRD",
+    2022: "Mintemp_MinT_2022.GRD",
+    2023: "Mintemp_MinT_2023.GRD",
+    2024: "Mintemp_MinT_2024.GRD",
+    2025: "Mintemp_MinT_2025.GRD",
+}
+
+print("🚀 Starting Combined Max/Min Climate Data Fusion Pipeline...")
+for year in sorted(max_temp_files.keys()):
+    f_max = max_temp_files[year]
+    f_min = min_temp_files[year]
+
+    if os.path.exists(f_max) and os.path.exists(f_min):
+        merge_yearly_data_to_db(f_max, f_min, year)
     else:
         print(
-            f"⚠️ File '{filename}' not found in directory. Skipping year {year}."
+            f"⚠️ Missing file pairing for Year {year}. Check your file naming schemas."
         )
 
-print("\n🎉 Master Database Created! It contains all 5 years of processed data.")
+print("\n🎉 Integrated Database Formed inside 'imd_combined_database/' folder!")

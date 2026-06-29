@@ -1,12 +1,19 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-import pandas as pd
 import joblib
+import pandas as pd
+from pathlib import Path
 
-# ==========================================================
-# PAGE CONFIG
-# ==========================================================
+# ----------------------------------------------------
+# PROJECT FOLDER
+# ----------------------------------------------------
+
+PROJECT_FOLDER = Path(__file__).resolve().parent.parent
+
+# ----------------------------------------------------
+# PAGE SETTINGS
+# ----------------------------------------------------
 
 st.set_page_config(
     page_title="ISRO Rainfall Prediction",
@@ -15,15 +22,11 @@ st.set_page_config(
 
 st.title("🌧️ ISRO Rainfall Prediction Dashboard")
 
-st.write("Click anywhere on the map to predict tomorrow's rainfall.")
-
-# ==========================================================
+# ----------------------------------------------------
 # LOAD MODEL
-# ==========================================================
+# ----------------------------------------------------
 
-model = joblib.load(
-    r"C:\Users\schou\OneDrive\Documents\Isro-Hackathon\rainfall_model.pkl"
-)
+model = joblib.load(PROJECT_FOLDER / "rainfall_model.pkl")
 
 # ==========================================================
 # LOAD DATASET

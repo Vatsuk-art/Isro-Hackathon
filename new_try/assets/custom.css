@@ -1,0 +1,251 @@
+/* ==========================================
+   ISRO RainVision AI
+   Futuristic Glassmorphism Theme
+========================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+html,
+body,
+[data-testid="stAppViewContainer"] {
+    background:
+        radial-gradient(circle at top left, rgba(0, 255, 255, 0.12), transparent 30%),
+        radial-gradient(circle at top right, rgba(0, 119, 255, 0.18), transparent 35%),
+        linear-gradient(135deg, #050816 0%, #091325 55%, #02040b 100%);
+    color: white;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Scrollbar */
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 220, 255, 0.4);
+    border-radius: 20px;
+}
+
+/* Sidebar */
+
+[data-testid="stSidebar"] {
+    background: rgba(5, 12, 28, 0.85);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(0, 255, 255, 0.15);
+}
+
+[data-testid="stSidebar"] * {
+    color: #f2f8ff;
+}
+
+/* Headers */
+
+h1,
+h2,
+h3,
+h4 {
+    font-family: 'Orbitron', sans-serif;
+    color: #7de7ff;
+}
+
+/* Hero Section */
+
+.hero-container {
+    text-align: center;
+    padding: 3rem 0;
+    animation: fadeIn 1.2s ease;
+}
+
+.hero-badge {
+    display: inline-block;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: rgba(0, 255, 255, 0.12);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    color: #8df6ff;
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: 2px;
+}
+
+.hero-title {
+    font-size: 4rem;
+    margin-bottom: 0.6rem;
+    text-shadow:
+        0 0 10px rgba(0, 255, 255, 0.5),
+        0 0 30px rgba(0, 160, 255, 0.4);
+}
+
+.hero-subtitle {
+    color: #b9d7ea;
+    max-width: 900px;
+    margin: auto;
+    line-height: 1.8;
+    font-size: 1.1rem;
+}
+
+/* Glass Cards */
+
+.glass-card {
+    background: rgba(18, 28, 55, 0.45);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(0, 255, 255, 0.15);
+
+    border-radius: 24px;
+
+    padding: 28px;
+
+    min-height: 280px;
+
+    box-shadow:
+        0 0 30px rgba(0, 170, 255, 0.08),
+        inset 0 0 20px rgba(255,255,255,0.02);
+
+    transition: all 0.35s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-6px);
+
+    box-shadow:
+        0 0 35px rgba(0, 220, 255, 0.18),
+        0 0 70px rgba(0, 120, 255, 0.12);
+}
+
+.center-card {
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Pulse Animation */
+
+.pulse-ring {
+    width: 120px;
+    height: 120px;
+
+    border-radius: 50%;
+
+    border: 2px solid rgba(0,255,255,0.4);
+
+    margin: auto;
+    margin-bottom: 24px;
+
+    animation: pulse 3s infinite;
+}
+
+/* Metric Cards */
+
+.metric-card {
+    background: rgba(15, 24, 45, 0.6);
+
+    backdrop-filter: blur(15px);
+
+    border-radius: 20px;
+
+    padding: 18px;
+
+    border: 1px solid rgba(0,255,255,0.15);
+
+    text-align: center;
+
+    box-shadow:
+        0 0 20px rgba(0,180,255,0.08);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #8ff7ff;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.metric-label {
+    color: #b0c9da;
+    margin-top: 8px;
+}
+
+/* Plotly Containers */
+
+.js-plotly-plot,
+.plot-container {
+    border-radius: 24px !important;
+    overflow: hidden;
+}
+
+/* Streamlit widgets */
+
+.stSelectbox,
+.stSlider,
+.stButton,
+.stMultiSelect {
+    background: transparent;
+}
+
+/* Animations */
+
+@keyframes pulse {
+
+    0% {
+        transform: scale(0.95);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(0.95);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+.metric-card {
+
+    margin-bottom: 20px;
+
+    padding: 25px;
+
+    border-radius: 20px;
+
+    min-height: 120px;
+}
+
+
+[data-testid="stMetric"] {
+
+    padding: 20px;
+
+    margin-bottom: 20px;
+
+    border-radius: 20px;
+
+    background: rgba(15,20,40,0.5);
+}
+
+
+.block-container {
+
+    max-width: 1700px;
+
+    padding-top: 2rem;
+
+    padding-left: 3rem;
+
+    padding-right: 3rem;
+}
